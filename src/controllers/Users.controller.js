@@ -1,8 +1,5 @@
 import Users from "../models/Users.model.js";
 import UsersService from "../services/Users.service.js";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { validationResult } from "express-validator";
 
 export default class UsersController {
     #service;
@@ -11,37 +8,55 @@ export default class UsersController {
         this.#service = service;
     }
 
-    signup = async (req, res) => {
+    signUp = async (req, res) => {
         try {
-            await this.#service.createUser(req.body);
-            res.send({ message: "User was registered successfully" });
-            console.log("User created successfully!");
-        } catch (err) {
-            res.status(500).send({ message: err.message });
+            if (!req.body.username) {
+                return res.status(400).json({ message: "Username invalid" });
+            }
+            if (!req.body.password) {
+                return res.status(400).json({ message: "Password invalid" });
+            }
+
+            await this.#service.createUser(
+                req.body.username,
+                req.body.password
+            );
+
+            res.status(201).json({
+                message: "User was registered successfully",
+            });
+        } catch (error) {
+            return res.status(error.status || 500).json({
+                message: error.message || "An error occurred",
+            });
         }
     };
 
-    createTemp = async (req, res) => {
+    createTempUser = async (req, res) => {
         try {
-            await this.#service.createTempUser(req.body);
-            const createdUser = await Users.findOne({
-                username: req.body.username,
-            }).select("-__v");
+            if (!req.body.username) {
+                return res.status(400).json({ message: "Username invalid" });
+            }
 
-            res.status(200).send({
+            const createdUser = await this.#service.createTempUser(
+                req.body.username
+            );
+
+            return res.status(201).json({
                 id: createdUser._id,
                 username: createdUser.username,
             });
-        } catch (err) {
-            res.status(500).send({ message: err.message });
+        } catch (error) {
+            return res.status(error.status || 500).json({
+                message: error.message || "An error occurred",
+            });
         }
     };
 
-    deleteTemp = async (req, res) => {
-        console.log(req.params);
+    deleteTempUser = async (req, res) => {
         try {
             const id = req.params.id;
-            if (!id) return res.status(400).json({ message: "Invalid id" });
+            if (!id) return res.status(400).json({ message: "Invalid ID" });
 
             const user = await this.#service.deleteTempUser(id);
 
@@ -49,60 +64,49 @@ export default class UsersController {
                 return res.status(404).json({ message: "User not found" });
 
             res.status(202).json(user);
-        } catch (e) {
-            res.status(500).json({ message: e.message });
+        } catch (error) {
+            return res.status(error.status || 500).json({
+                message: error.message || "An error occurred",
+            });
         }
     };
 
-    signin = async (req, res) => {
+    signIn = async (req, res) => {
         try {
-            const user = await Users.findOne({
-                username: req.body.username,
-            }).select("-__v");
-
-            if (!user) {
-                return res.status(404).send({ message: `User not found` });
+            if (!req.body.username || !req.body.password) {
+                return res
+                    .status(400)
+                    .json({ message: "Invalid username/password combination" });
             }
 
-            const passwordIsValid = bcrypt.compareSync(
-                req.body.password,
-                user.password
+            const user = await this.#service.signIn(
+                req.body.username,
+                req.body.password
             );
-            if (!passwordIsValid) {
-                return res.status(401).send({
-                    accessToken: null,
-                    message: "Invalid username/password combination",
-                });
-            }
 
-            const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-                expiresIn: 86400,
+            return res.status(200).json(user);
+        } catch (error) {
+            return res.status(error.status || 500).json({
+                message: error.message || "An error occurred",
             });
-
-            res.status(200).send({
-                id: user._id,
-                username: user.username,
-                accessToken: token,
-            });
-            console.log(`User "${user.username}" signed in successfully`);
-        } catch (err) {
-            console.error(err);
-            res.status(500).send({ message: err.message });
         }
     };
 
     getUserByID = async (req, res) => {
         try {
             const userID = req.params.id;
-            !userID && res.status(400).json({ message: "Invalid ID" });
+            if (!userID) return res.status(400).json({ message: "Invalid ID" });
 
-            const role = await this.#service.getUserByID(userID);
+            const user = await this.#service.getUserByID(userID);
 
-            !role && res.status(404).json({ message: "Role not found" });
+            if (!user)
+                return res.status(404).json({ message: "User not found" });
 
-            res.json(role);
-        } catch (e) {
-            res.status(500).json({ message: e.message });
+            return res.status(202).json(user);
+        } catch (error) {
+            return res.status(error.status || 500).json({
+                message: error.message || "An error occurred",
+            });
         }
     };
 }

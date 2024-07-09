@@ -33,7 +33,7 @@ export default class UsersRoutes {
                 checkDuplicateUsername,
             ],
             signInErrorCatch,
-            this.#controller.signup
+            this.#controller.signUp
         );
         this.#router.post(
             `/users/createtemp`,
@@ -46,7 +46,7 @@ export default class UsersRoutes {
                 checkDuplicateUsername,
             ],
             signInErrorCatch,
-            this.#controller.createTemp
+            this.#controller.createTempUser
         );
         this.#router.post(
             `/users/signin`,
@@ -61,11 +61,11 @@ export default class UsersRoutes {
                     .escape(),
             ],
             signInErrorCatch,
-            this.#controller.signin
+            this.#controller.signIn
         );
         this.#router.delete(
             `/users/deletetemp/:id`,
-            this.#controller.deleteTemp
+            this.#controller.deleteTempUser
         );
         this.#router.get(`/users/getuser/:id`, this.#controller.getUserByID);
     };
